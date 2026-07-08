@@ -30,3 +30,13 @@ jobs:
       # Step 4: Run the test suite (same as your local npm test)
       - name: Run tests
         run: npm test
+
+  deploy:
+    name: Deploy to Render
+    needs: test                          # only starts if "test" job above succeeded
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'  # only deploy from the main branch
+
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
