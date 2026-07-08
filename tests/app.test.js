@@ -21,7 +21,7 @@ describe('GET /add', () => {
   it('should correctly add two numbers', async () => {
     const res = await request(app).get('/add?a=5&b=7');
     expect(res.statusCode).toBe(200);
-    expect(res.body.result).toBe(13);
+    expect(res.body.result).toBe(12);
   });
 
   it('should return 400 for invalid input', async () => {
