@@ -1,76 +1,150 @@
-# Hello CI/CD 🚀
+# Hello CI/CD
 
-A minimal Express.js app built specifically to **learn how CI/CD works**, not to do anything fancy. It has 3 routes and 4 tests. That's it — the point is the pipeline, not the app.
+[![CI Pipeline](https://github.com/Parthtank911/hello-cicd/actions/workflows/ci.yml/badge.svg)](https://github.com/Parthtank911/hello-cicd/actions/workflows/ci.yml)
+[![Node.js](https://img.shields.io/badge/Node.js-20.x-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Tests](https://img.shields.io/badge/Tests-Jest-C21325?logo=jest&logoColor=white)](https://jestjs.io/)
+[![Deployed on Render](https://img.shields.io/badge/Deployed-Render-46E3B7?logo=render&logoColor=white)](https://hello-cicd-wbgt.onrender.com)
 
-## What this project does
+A minimal Express.js REST API with a complete, working CI/CD pipeline: automated testing on every push, and deployment that is gated behind those tests passing.
 
-| Route | What it returns |
+**Live app:** https://hello-cicd-wbgt.onrender.com
+
+---
+
+## Table of contents
+
+- [Overview](#overview)
+- [API endpoints](#api-endpoints)
+- [Tech stack](#tech-stack)
+- [Project structure](#project-structure)
+- [Running locally](#running-locally)
+- [Testing](#testing)
+- [CI/CD pipeline](#cicd-pipeline)
+- [Deployment](#deployment)
+- [Design decisions](#design-decisions)
+
+---
+
+## Overview
+
+This project has two goals:
+
+1. Serve a small, working REST API (add two numbers, check health, return a welcome message)
+2. Demonstrate a real CI/CD pipeline where **broken code cannot reach production** — enforced automatically, not manually
+
+Every push to `main` triggers the pipeline: install dependencies → run tests → if (and only if) tests pass, trigger a deployment to the live server.
+
+## API endpoints
+
+| Method | Route | Description | Example |
+|---|---|---|---|
+| `GET` | `/` | Returns a welcome message | [Try it](https://hello-cicd-wbgt.onrender.com/) |
+| `GET` | `/health` | Health check, returns `{ status: "ok" }` | [Try it](https://hello-cicd-wbgt.onrender.com/health) |
+| `GET` | `/add?a=5&b=7` | Adds two numbers, returns `{ result: 12 }` | [Try it](https://hello-cicd-wbgt.onrender.com/add?a=5&b=7) |
+
+**Error handling:** `/add` returns `400` with an error message if `a` or `b` is missing or not a valid number.
+
+> Note: this runs on Render's free tier, which spins down after periods of inactivity. The first request after idle time may take 30–60 seconds to respond while the instance wakes up.
+
+## Tech stack
+
+| Category | Tools |
 |---|---|
-| `GET /` | A welcome message |
-| `GET /health` | `{ status: "ok" }` — used by deploy platforms to check if your app is alive |
-| `GET /add?a=5&b=7` | `{ result: 12 }` — simple logic worth writing tests for |
+| Runtime | Node.js 20 |
+| Framework | Express.js |
+| Testing | Jest, Supertest |
+| CI/CD | GitHub Actions |
+| Hosting | Render (free tier) |
 
-## Run it locally
+## Project structure
 
-```bash
-npm install
-npm start        # starts the server on http://localhost:3000
+```
+hello-cicd/
+├── .github/
+│   └── workflows/
+│       └── ci.yml          # CI + CD pipeline definition
+├── tests/
+│   └── app.test.js         # Test suite (4 cases covering all routes)
+├── app.js                  # Express app instance & route definitions
+├── server.js               # Entry point — starts the HTTP server
+├── package.json
+├── .gitignore
+└── README.md
 ```
 
-## Run the tests locally
+`app.js` and `server.js` are split deliberately: `app.js` exports the Express app without starting a listener, which lets test files import it directly (via Supertest) without binding to a real port.
+
+## Running locally
+
+```bash
+git clone https://github.com/Parthtank911/hello-cicd.git
+cd hello-cicd
+npm install
+npm start
+```
+
+Server starts at `http://localhost:3000` (or the port set in the `PORT` environment variable).
+
+## Testing
 
 ```bash
 npm test
 ```
 
-You should see 4 passing tests. **Always run tests locally before pushing** — CI just automates this same check on GitHub's servers.
+**Coverage:**
+- `GET /` returns 200 and the expected welcome message
+- `GET /health` returns 200 and `{ status: "ok" }`
+- `GET /add` returns the correct sum for valid numeric input
+- `GET /add` returns 400 with an error message for invalid input
 
----
+All tests use Supertest to make real HTTP-style requests against the Express app in memory, without needing a running server.
 
-## Part 1: Continuous Integration (CI) — already set up
+## CI/CD pipeline
 
-Look at `.github/workflows/ci.yml`. Here's what happens, step by step, every time you push code or open a pull request to `main`:
+Defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Two sequential jobs:
 
-1. **Checkout code** — GitHub spins up a fresh Ubuntu machine and copies your repo onto it
-2. **Setup Node.js** — installs Node 20 on that machine
-3. **Install dependencies** — runs `npm install`, exactly like on your laptop
-4. **Run tests** — runs `npm test`
-
-If any test fails, the workflow shows a red ❌ on GitHub and (if configured) blocks merging. If all tests pass, you get a green ✅. That's the entire concept of CI: **automatically verify your code works, on every change, without you doing it manually.**
-
-### How to see this in action
-1. Push this project to a new GitHub repo
-2. Go to the **Actions** tab on GitHub — you'll watch the workflow run live
-3. Try breaking a test on purpose (e.g., change `expect(res.body.result).toBe(12)` to `toBe(13)`), push it, and watch it fail red
-4. Fix it, push again, watch it turn green
-
----
-
-## Part 2: Continuous Deployment (CD) — add this next
-
-Once CI is working, add automatic deployment to **Render** (free tier, beginner-friendly):
-
-1. Create a free account at [render.com](https://render.com)
-2. Click **New → Web Service**, connect your GitHub repo
-3. Set:
-   - **Build Command:** `npm install`
-   - **Start Command:** `npm start`
-4. Render automatically redeploys every time you push to `main` — **that's CD**. No extra YAML needed for basic Render auto-deploy; Render watches your repo directly.
-
-### Optional: Make deployment depend on tests passing
-Right now, even if your GitHub Actions tests fail, Render would still try to deploy (since Render watches the repo independently). To properly **gate deployment on tests passing**, add a second job to `ci.yml` that only runs after tests succeed and calls Render's **Deploy Hook URL** (found in Render dashboard → Settings → Deploy Hook):
-
-```yaml
-  deploy:
-    name: Deploy to Render
-    needs: test          # <-- only runs if the "test" job above succeeded
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Trigger Render Deploy Hook
-        run: curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
+```
+push to main
+     │
+     ▼
+┌─────────────────────────┐
+│ Job: test                │
+│  • checkout code         │
+│  • setup Node.js 20      │
+│  • npm install            │
+│  • npm test                │
+└───────────┬───────────────┘
+            │ passes
+            ▼
+┌─────────────────────────┐
+│ Job: deploy                │
+│  • runs only if test passed │
+│  • runs only on main branch │
+│  • POSTs to Render deploy    │
+│    hook via curl             │
+└───────────┬───────────────┘
+            ▼
+      Render pulls latest
+      commit and redeploys
 ```
 
-Add `RENDER_DEPLOY_HOOK` as a GitHub repo secret (Settings → Secrets and variables → Actions) so the URL isn't exposed in your code.
+**Key mechanism — the deployment gate:**
+```yaml
+deploy:
+  needs: test
+  if: github.ref == 'refs/heads/main'
+```
+`needs: test` means the `deploy` job will not start unless the `test` job completed successfully. If a test fails, the pipeline stops at that point — `deploy` is skipped entirely, and the live app is left untouched.
 
-**Now you have real CI/CD:** tests run automatically → if they pass → deployment triggers automatically → if they fail → nothing deploys.
+**Secrets:** the Render deploy hook URL is stored as a GitHub Actions repository secret (`RENDER_DEPLOY_HOOK`), not hardcoded anywhere in the codebase.
+
+## Deployment
+
+Hosted on Render, connected to this repository. Render's own auto-deploy-on-push is disabled; deployment is triggered exclusively by the GitHub Actions `deploy` job's `curl` request to the deploy hook, once tests pass. This keeps a single source of truth for "is it safe to deploy" — the test suite.
+
+## Design decisions
+
+- **Split `app.js` / `server.js`** — allows the Express app to be tested in isolation without opening a real network port during test runs.
+- **`/health` endpoint** — a standard convention so deployment platforms (and future monitoring tools) have a lightweight endpoint to check liveness without hitting business logic.
+- **Deployment gated on tests, not on push** — pushing broken code should never be able to affect the live app; the pipeline enforces this rather than relying on manual discipline.
+- **Free-tier hosting** — chosen deliberately for a project at this scale; the tradeoff (cold starts after inactivity) is documented above rather than hidden.
