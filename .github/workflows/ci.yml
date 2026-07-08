@@ -1,0 +1,32 @@
+name: CI Pipeline
+
+# WHEN should this workflow run?
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Install & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Get the code onto the runner machine
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Node.js on the runner
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Step 3: Install dependencies (same as your local npm install)
+      - name: Install dependencies
+        run: npm install
+
+      # Step 4: Run the test suite (same as your local npm test)
+      - name: Run tests
+        run: npm test
